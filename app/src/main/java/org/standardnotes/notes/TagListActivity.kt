@@ -21,7 +21,6 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.android.synthetic.main.activity_tags.*
 import org.joda.time.DateTime
 import org.standardnotes.notes.comms.Crypt
-import org.standardnotes.notes.comms.SyncManager
 import org.standardnotes.notes.comms.data.Tag
 import java.util.*
 
@@ -56,7 +55,6 @@ class TagListActivity : BaseActivity() {
                         newTag.title = input.text.toString()
                         newTag.dirty = true
                         app.noteStore.putTag(newTag.uuid, newTag)
-                        SyncManager.sync()
                         tags = getUndeletedTags()
                         list.adapter.notifyDataSetChanged()
                     })
@@ -134,7 +132,6 @@ class TagListActivity : BaseActivity() {
                                 val remainingTagIds = tags.map { it.uuid }
                                 selectedTags = selectedTags.filter { remainingTagIds.contains(it.uuid) }.toSet() // remove any selected and deleted tags
                                 list.adapter.notifyDataSetChanged()
-                                SyncManager.sync()
                             })
                             .setNegativeButton(R.string.action_cancel, null)
                             .show()

@@ -1,9 +1,7 @@
 package org.standardnotes.notes.comms;
 
-import android.os.Looper;
 import android.util.Base64;
 import android.util.Log;
-import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.app.Activity;
@@ -14,16 +12,13 @@ import org.spongycastle.crypto.generators.PKCS5S2ParametersGenerator;
 import org.spongycastle.crypto.params.KeyParameter;
 import org.spongycastle.util.encoders.Hex;
 import org.standardnotes.notes.BuildConfig;
-import org.standardnotes.notes.LoginActivity;
 import org.standardnotes.notes.SApplication;
-import org.standardnotes.notes.comms.data.AuthParamsResponse;
 import org.standardnotes.notes.comms.data.ContentType;
 import org.standardnotes.notes.comms.data.EncryptableItem;
 import org.standardnotes.notes.comms.data.EncryptedItem;
 import org.standardnotes.notes.comms.data.Note;
 import org.standardnotes.notes.comms.data.NoteContent;
 import org.standardnotes.notes.comms.data.Reference;
-import org.standardnotes.notes.comms.data.SigninResponse;
 import org.standardnotes.notes.comms.data.Tag;
 import org.standardnotes.notes.comms.data.TagContent;
 
@@ -44,9 +39,6 @@ import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import kotlin.text.Charsets;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class Crypt {
 
@@ -55,11 +47,6 @@ public class Crypt {
     public static final String HMAC_SHA_256 = "HmacSHA256";
     private static ContentDecryptor<Note> noteDecryptor = new ContentDecryptor<>(Note.class);
     private static ContentDecryptor<Tag> tagDecryptor = new ContentDecryptor<>(Tag.class);
-
-    @NotNull
-    public static boolean isParamsSupported(AuthParamsResponse params) {
-        return true;
-    }
 
     public static void showConfirmationAlert(final Activity activity, final String title, final String message, final String confirmTitle, final DialogInterface.OnClickListener onConfirmation, final DialogInterface.OnClickListener onCancel) {
         AlertDialog.Builder alert = new AlertDialog.Builder(activity);
@@ -76,160 +63,6 @@ public class Crypt {
         alert.setMessage(message);
         alert.setPositiveButton("Ok", onOk);
         alert.show();
-    }
-
-    public static void doLogin(final Activity activity, final String email, final String password, final AuthParamsResponse params, final Callback<SigninResponse> callback) {
-        Thread loginThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Looper.prepare();
-                try {
-                    byte[] key = Crypt.generateKey(
-                            password.getBytes(Charsets.UTF_8),
-                            params.getPwSalt().getBytes(Charsets.UTF_8),
-                            params.getPwCost());
-                    String fullHashedPassword = Crypt.bytesToHex(key);
-                    int splitLength = fullHashedPassword.length()/3;
-                    final String serverHashedPassword = fullHashedPassword.substring(0, splitLength);
-                    final String mk = fullHashedPassword.substring(splitLength, splitLength * 2);
-                    final String ak = fullHashedPassword.substring(splitLength * 2, splitLength * 3);
-
-                    String stringToAuth = String.format("%d:%s", params.getPwCost(), params.getPwSalt());
-                    String localAuth = createHash(stringToAuth, ak);
-
-                    final Runnable signInBlock = new Runnable() {
-                        @Override
-                        public void run() {
-                            SApplication.Companion.getInstance().getComms().getApi().signin(email, serverHashedPassword).enqueue(new Callback<SigninResponse>() {
-                                @Override
-                                public void onResponse(Call<SigninResponse> call, Response<SigninResponse> response) {
-                                    if (response.isSuccessful()) {
-                                        SApplication.Companion.getInstance().getValueStore().setTokenAndMasterKey(response.body().getToken(), mk, ak);
-                                        SApplication.Companion.getInstance().getValueStore().setEmail(email);
-                                    }
-                                    callback.onResponse(call, response);
-                                }
-
-                                @Override
-                                public void onFailure(Call<SigninResponse> call, Throwable t) {
-                                    callback.onFailure(call, t);
-                                }
-                            });
-                        }
-                    };
-
-                    if(params.getPwAuth() == null || (params.getPwAuth() != null && params.getPwAuth().length() == 0)) {
-                        // no pw_auth returned by server
-                        showConfirmationAlert(activity,
-                                "Verification Tag Not Found",
-                                "Cannot verify authenticity of server parameters. Please visit standardnotes.org/verification to learn more. Do you wish to continue login?",
-                                "Login Anyway",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(final DialogInterface dialog, int which) {
-                                        activity.runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                signInBlock.run();
-                                                dialog.dismiss();
-                                            }
-                                        });
-
-                                    }
-                                },
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(final DialogInterface dialog, int which) {
-                                        activity.runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                callback.onFailure(null, null);
-                                                dialog.dismiss();
-                                            }
-                                        });
-
-                                    }
-                                }
-                        );
-                    }
-
-                    else if(!localAuth.equals(params.getPwAuth())) {
-                        // invalid parameters sent by server
-                        showAlert(activity,
-                                "Invalid Verification Tag",
-                                "Invalid server verification tag; aborting login. Learn more at standardnotes.org/verification.",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(final DialogInterface dialog, int which) {
-                                        activity.runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                callback.onFailure(null, null);
-                                                dialog.dismiss();
-                                            }
-                                        });
-
-                                    }
-                                });
-                    }
-
-                    else {
-                        signInBlock.run();
-                    }
-
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    callback.onFailure(null, e);
-                }
-
-                Looper.loop();
-            }
-        });
-        loginThread.start();
-    }
-
-    public static void doRegister(final String email, final String password, final Callback<SigninResponse> callback) {
-        Thread loginThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final AuthParamsResponse params = Crypt.getDefaultAuthParams(email);
-                    byte[] key = Crypt.generateKey(
-                            password.getBytes(Charsets.UTF_8),
-                            params.getPwSalt().getBytes(Charsets.UTF_8),
-                            params.getPwCost());
-                    String fullHashedPassword = Crypt.bytesToHex(key);
-                    int splitLength = fullHashedPassword.length()/3;
-                    String serverHashedPassword = fullHashedPassword.substring(0, splitLength);
-                    final String mk = fullHashedPassword.substring(splitLength, splitLength * 2);
-                    final String ak = fullHashedPassword.substring(splitLength * 2, splitLength * 3);
-
-                    String stringToAuth = String.format("%d:%s", params.getPwCost(), params.getPwSalt());
-                    params.setPwAuth(createHash(stringToAuth, ak));
-
-                    SApplication.Companion.getInstance().getComms().getApi().register(email, serverHashedPassword,
-                            params.getPwSalt(), params.getPwAuth(), params.getPwCost()).enqueue(new Callback<SigninResponse>() {
-                        @Override
-                        public void onResponse(Call<SigninResponse> call, Response<SigninResponse> response) {
-                            if (response.isSuccessful()) {
-                                SApplication.Companion.getInstance().getValueStore().setTokenAndMasterKey(response.body().getToken(), mk, ak);
-                                SApplication.Companion.getInstance().getValueStore().setEmail(email);
-                                SApplication.Companion.getInstance().getValueStore().setAuthParams(params);
-                            }
-                            callback.onResponse(call, response);
-                        }
-
-                        @Override
-                        public void onFailure(Call<SigninResponse> call, Throwable t) {
-                            callback.onFailure(call, t);
-                        }
-                    });
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    callback.onFailure(null, e);
-                }
-            }
-        });
-        loginThread.start();
     }
 
     private static class Keys {
@@ -535,14 +368,6 @@ public class Crypt {
             }
             return null;
         }
-    }
-
-    public static AuthParamsResponse getDefaultAuthParams(String email) throws Exception {
-        AuthParamsResponse defaultAuthParams = new AuthParamsResponse();
-        defaultAuthParams.setPwCost(60000);
-        String nonce = generateKey(256);
-        defaultAuthParams.setPwSalt(hashSha1(email + ":" + nonce));
-        return defaultAuthParams;
     }
 }
 

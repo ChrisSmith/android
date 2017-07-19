@@ -340,7 +340,6 @@ class NoteStore : SQLiteOpenHelper(SApplication.instance, "note", null, CURRENT_
     }
 
     @Synchronized fun putItems(items: SyncItems): List<Exception> {
-        SApplication.instance.valueStore.syncToken = items.syncToken.trim()
         val errors = ArrayList<Exception>(0)
         items.retrievedItems.forEach {
             try { putItem(it, false) } catch (ex: Exception) { errors += ex }
@@ -443,7 +442,6 @@ class NoteStore : SQLiteOpenHelper(SApplication.instance, "note", null, CURRENT_
     }
 
     @Synchronized fun deleteAll() {
-        SApplication.instance.valueStore.syncToken = null
         writableDatabase.delete(TABLE_NOTE, null, null)
         writableDatabase.delete(TABLE_TAG, null, null)
         writableDatabase.delete(TABLE_ENCRYPTABLE, null, null)

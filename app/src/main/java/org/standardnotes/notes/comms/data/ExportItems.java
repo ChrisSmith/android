@@ -8,21 +8,9 @@ import java.util.List;
 
 public class ExportItems {
 
-    @SerializedName("auth_params")
-    @Expose
-    private AuthParamsResponse authParams;
-
     @SerializedName("items")
     @Expose
     private List<EncryptableItem> items = new ArrayList<EncryptableItem>();
-
-    public AuthParamsResponse getAuthParams() {
-        return authParams;
-    }
-
-    public void setAuthParams(AuthParamsResponse authParams) {
-        this.authParams = authParams;
-    }
 
     public List<EncryptableItem> getItems() {
         return items;

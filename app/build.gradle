@@ -12,7 +12,6 @@ android {
         versionCode 10400
         versionName "1.4.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-        buildConfigField "String", "SERVER_DEFAULT", "\"https://sync.standardnotes.org/\""
     }
     // The release password should not be stored on the repository. Use a build parameter, eg:
     // gradlew assembleRelease -PsignPass=xxxx
@@ -43,7 +42,6 @@ android {
         emulatortest {
             resValue "string", "app_name", "Notes (staging)"
             applicationId "org.standardnotes.notes.buildfortest"
-            buildConfigField "String", "SERVER_DEFAULT", "\"https://stagingapi.standardnotes.org/\""
             dimension "runmethod"
         }
     }
@@ -95,16 +93,11 @@ dependencies {
     }
     compile 'org.glassfish:javax.annotation:10.0-b28'
     compile 'com.google.code.gson:gson:2.8.0'
-    compile 'com.squareup.retrofit2:retrofit:2.1.0'
-    compile 'com.squareup.retrofit2:converter-gson:2.1.0'
-    compile 'com.squareup.okhttp3:okhttp:3.6.0'
-    compile 'com.squareup.okhttp3:logging-interceptor:3.6.0'
     compile 'com.madgag.spongycastle:core:1.54.0.0'
     compile 'com.madgag.spongycastle:prov:1.54.0.0'
     compile 'com.madgag.spongycastle:pkix:1.54.0.0'
     compile 'com.madgag.spongycastle:pg:1.54.0.0'
     compile 'net.danlew:android.joda:2.9.4.1'
-    compile 'ch.acra:acra:4.9.2'
     testCompile 'junit:junit:4.12'
 }
 repositories {

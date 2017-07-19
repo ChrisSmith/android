@@ -25,7 +25,6 @@ import org.standardnotes.notes.R
 import org.standardnotes.notes.SApplication
 import org.standardnotes.notes.TagListActivity
 import org.standardnotes.notes.comms.Crypt
-import org.standardnotes.notes.comms.SyncManager
 import org.standardnotes.notes.comms.data.ContentType
 import org.standardnotes.notes.comms.data.Note
 import org.standardnotes.notes.comms.data.Reference
@@ -36,14 +35,12 @@ const val REQ_TAGS = 1
 
 val EXTRA_TEXT = "text"
 
-class NoteFragment : Fragment(), SyncManager.SyncListener {
+class NoteFragment : Fragment() {
 
     val SYNC_DELAY = 500L
     val syncHandler: Handler = Handler()
     val syncRunnable: Runnable = Runnable {
-        if (saveNote()) {
-            SyncManager.sync()
-        }
+        saveNote()
     }
 
     lateinit var note: Note
@@ -150,15 +147,9 @@ class NoteFragment : Fragment(), SyncManager.SyncListener {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        SyncManager.subscribe(this)
-    }
-
     override fun onPause() {
         super.onPause()
         syncHandler.removeCallbacks(syncRunnable)
-        SyncManager.unsubscribe(this)
         syncRunnable.run()
     }
 
@@ -260,19 +251,6 @@ class NoteFragment : Fragment(), SyncManager.SyncListener {
         val newTagIds = newTags.map { it.uuid }.sorted()
         return oldTagIds != newTagIds
     }
-
-    override fun onSyncStarted() {
-        setSubtitle(R.id.toolbarSubtitleSaving)
-    }
-
-    override fun onSyncCompleted() {
-        setSubtitle(R.id.toolbarSubtitleFinished)
-    }
-
-    override fun onSyncFailed() {
-        setSubtitle(R.id.toolbarSubtitleError)
-    }
-
 }
 
 fun newNote(): Note {

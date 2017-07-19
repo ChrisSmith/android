@@ -20,12 +20,11 @@ import org.joda.time.format.DateTimeFormat
 import org.standardnotes.notes.NoteActivity
 import org.standardnotes.notes.R
 import org.standardnotes.notes.SApplication
-import org.standardnotes.notes.comms.SyncManager
 import org.standardnotes.notes.comms.data.Note
 import java.util.*
 
 
-class NoteListFragment : Fragment(), SyncManager.SyncListener {
+class NoteListFragment : Fragment() {
 
     val adapter: Adapter by lazy { Adapter() }
 
@@ -61,20 +60,12 @@ class NoteListFragment : Fragment(), SyncManager.SyncListener {
 
     override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        SyncManager.subscribe(this)
         list.layoutManager = LinearLayoutManager(activity, LinearLayoutManager.VERTICAL, false)
         list.addItemDecoration(DividerItemDecoration(activity, LinearLayoutManager.VERTICAL))
         swipeRefreshLayout.setColorSchemeResources(
                 R.color.colorPrimary,
                 R.color.colorAccent)
-        swipeRefreshLayout.setOnRefreshListener { SyncManager.sync() }
-        SyncManager.sync()
         list.adapter = adapter
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        SyncManager.unsubscribe(this)
     }
 
     override fun onResume() {
@@ -86,16 +77,6 @@ class NoteListFragment : Fragment(), SyncManager.SyncListener {
         super.onSaveInstanceState(outState)
         outState.putString("tagId", tagId)
         outState.putString("search", searchText)
-    }
-
-    override fun onSyncStarted() {
-        swipeRefreshLayout.isRefreshing = true
-        currentSnackbar?.dismiss()
-    }
-
-    override fun onSyncCompleted() {
-        swipeRefreshLayout.isRefreshing = false
-        currentSnackbar?.dismiss()
     }
 
     fun refreshNotesForSearch(search: String?) {
@@ -125,17 +106,6 @@ class NoteListFragment : Fragment(), SyncManager.SyncListener {
             refreshNotesForTag(tagId)
         else
             refreshNotesForSearch(searchText)
-    }
-
-
-    override fun onSyncFailed() {
-        swipeRefreshLayout.isRefreshing = false
-        // TODO this always assumes it's a network error, but the server may have errored or the local store may have failed
-        currentSnackbar = Snackbar.make(activity.rootView, R.string.error_fail_sync, Snackbar.LENGTH_INDEFINITE)
-                .setAction(R.string.sync_retry, {
-                    SyncManager.sync()
-                })
-        currentSnackbar!!.show()
     }
 
     fun startNewNote(x: Int, y: Int, uuid: String) {
@@ -187,7 +157,6 @@ class NoteListFragment : Fragment(), SyncManager.SyncListener {
                             .setPositiveButton(R.string.action_delete, { dialogInterface, i ->
                                 SApplication.instance.noteStore.deleteItem(noteIdToDelete)
                                 refreshNotes()
-                                SyncManager.sync()
                             })
                             .setNegativeButton(R.string.action_cancel, null)
                             .show()

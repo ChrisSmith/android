@@ -9,22 +9,9 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.view_navigation_header.view.*
-import org.standardnotes.notes.comms.SyncManager
 import org.standardnotes.notes.frag.NoteListFragment
 
-class MainActivity : BaseActivity(), SyncManager.SyncListener {
-
-    override fun onSyncStarted() {
-    }
-
-    override fun onSyncFailed() {
-        onSyncCompleted()
-    }
-
-    override fun onSyncCompleted() {
-        updateTagsMenu() // Update tags list
-        noteListFragment().refreshNotesForTag(selectedTagId) // Update notes in fragment
-    }
+class MainActivity : BaseActivity() {
 
     override fun onSaveInstanceState(outState: Bundle?) {
         super.onSaveInstanceState(outState)
@@ -50,19 +37,8 @@ class MainActivity : BaseActivity(), SyncManager.SyncListener {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setHomeButtonEnabled(true)
         val header = drawer.inflateHeaderView(R.layout.view_navigation_header)
-        val values = SApplication.instance.valueStore
-        if (values.token != null) {
-            header.main_account_server.text = values.server
-            header.main_account_email.text = values.email
-            header.main_account_title.setOnClickListener {
-                startActivity(Intent(this, SettingsActivity::class.java))
-            }
-        } else {
-            header.main_account_server.text = getText(R.string.not_logged_in)
-            header.main_account_email.text = ""
-            header.main_account_title.setOnClickListener {
-                startActivity(Intent(this, LoginActivity::class.java))
-            }
+        header.main_account_title.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         title = getString(R.string.app_name)
@@ -120,15 +96,11 @@ class MainActivity : BaseActivity(), SyncManager.SyncListener {
 
     override fun onResume() {
         super.onResume()
-        SyncManager.startSyncTimer()
-        SyncManager.subscribe(this)
         updateTagsMenu()
     }
 
     override fun onPause() {
         super.onPause()
-        SyncManager.stopSyncTimer()
-        SyncManager.unsubscribe(this)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
